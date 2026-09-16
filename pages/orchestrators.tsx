@@ -2,6 +2,7 @@ import ErrorComponent from "@components/Error";
 import OrchestratorList from "@components/OrchestratorList";
 import { LAYOUT_MAX_WIDTH } from "@layouts/constants";
 import { getLayout } from "@layouts/main";
+import { trackVercelAnalyticsEvent } from "@lib/analytics";
 import { getOrchestrators, getProtocol } from "@lib/api/ssr";
 import { EnsIdentity } from "@lib/api/types/get-ens";
 import {
@@ -41,6 +42,10 @@ const OrchestratorsPage = ({
     // Let the browser paint the new route first
     const id = requestAnimationFrame(() => setShowOrchList(true));
     return () => cancelAnimationFrame(id);
+  }, []);
+
+  useEffect(() => {
+    trackVercelAnalyticsEvent("orchestrators_page_viewed");
   }, []);
 
   if (hadError) {

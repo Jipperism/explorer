@@ -10,6 +10,7 @@ import { SnackbarProvider } from "@components/Snackbar";
 import TxStartedDialog from "@components/TxStartedDialog";
 import TxSummaryDialog from "@components/TxSummaryDialog";
 import URLVerificationBanner from "@components/URLVerificationBanner";
+import { trackVercelAnalyticsEvent } from "@lib/analytics";
 import { IS_L2 } from "@lib/chains";
 import { globalStyles } from "@lib/globalStyles";
 import {
@@ -63,6 +64,7 @@ import { FiInfo } from "react-icons/fi";
 import { LuRadioTower } from "react-icons/lu";
 import { useWindowSize } from "react-use";
 import { Chain } from "viem";
+import { useAccountEffect } from "wagmi";
 
 import {
   useAccountAddress,
@@ -101,12 +103,15 @@ if (process.env.NODE_ENV === "production") {
 
 const themeMap = getThemes();
 
+const NON_DELEGATION_PATHS = ["/migrate", "/voting", "/treasury"];
+
 export type DrawerItem = {
   name: ReactNode;
   href: string;
   as: string;
   icon: React.ElementType;
   className?: string;
+  onClick?: () => void;
 };
 
 const DesignSystemProviderTyped = DesignSystemProvider as React.FC<{
@@ -265,6 +270,20 @@ const Layout = ({ children, title = "Livepeer Explorer" }) => {
     ReactGA.pageview(window.location.pathname + window.location.search);
   }, []);
 
+  useAccountEffect({
+    onConnect: ({ isReconnected }) => {
+      // Outside of migration and governance, connecting a wallet is taken as
+      // delegation intent. Reconnects restore a previous session, so they
+      // don't count.
+      const isNonDelegationPage = NON_DELEGATION_PATHS.some((path) =>
+        asPath.startsWith(path)
+      );
+      if (!isReconnected && !isNonDelegationPage) {
+        trackVercelAnalyticsEvent("wallet_connected");
+      }
+    },
+  });
+
   const items: DrawerItem[] = [
     {
       name: "Overview",
@@ -279,6 +298,7 @@ const Layout = ({ children, title = "Livepeer Explorer" }) => {
       as: "/orchestrators",
       icon: DNS,
       className: "orchestrators",
+      onClick: () => trackVercelAnalyticsEvent("orchestrators_nav_clicked"),
     },
     {
       name: "Gateways",
@@ -548,6 +568,11 @@ const Layout = ({ children, title = "Livepeer Explorer" }) => {
                           <Link passHref href="/orchestrators">
                             <Button
                               size="3"
+                              onClick={() =>
+                                trackVercelAnalyticsEvent(
+                                  "orchestrators_nav_clicked"
+                                )
+                              }
                               css={{
                                 marginLeft: "$1",
                                 backgroundColor: isOrchestratorsNavActive
